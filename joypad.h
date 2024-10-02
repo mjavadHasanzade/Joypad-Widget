@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QWidget>
+#include <QKeyEvent>
+#include <QDebug>
 
 class QPropertyAnimation;
 class QParallelAnimationGroup;
@@ -15,14 +17,25 @@ public:
 
     float x() const;
     float y() const;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+
+    bool getIsJoyPadActive() const;
 
 signals:
     void xChanged(float value);
     void yChanged(float value);
+    void joyActivationChanged(bool active);
+
+protected:
+    void resizeEvent(QResizeEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
 
 public slots:
     void setX(float value);
     void setY(float value);
+    void setJoyPadActive(bool value);
 
     // Add or remove the knob return animations in x or y- direction.
     void removeXAnimation();
@@ -36,15 +49,11 @@ public slots:
     */
     void setAlignment(Qt::Alignment f);
 
-private:
-    void resizeEvent(QResizeEvent *event) override;
-    virtual void paintEvent(QPaintEvent *event) override;
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
 
+private:
     float m_x;
     float m_y;
+    bool isJoyPadActive = false;
 
     QParallelAnimationGroup *m_returnAnimation;
     QPropertyAnimation *m_xAnimation;
@@ -57,4 +66,18 @@ private:
     bool knopPressed;
 
     Qt::Alignment m_alignment;
+
+protected:
+
+    bool focusNextPrevChild(bool next) override {
+        return QWidget::focusNextPrevChild(next);
+    }
+
+    void focusInEvent(QFocusEvent *event) override {
+        QWidget::focusInEvent(event);
+    }
+
+    void focusOutEvent(QFocusEvent *event) override {
+        QWidget::focusOutEvent(event);
+    }
 };

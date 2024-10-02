@@ -10,7 +10,7 @@
 template<typename T>
 T constrain(T Value, T Min, T Max)
 {
-  return (Value < Min)? Min : (Value > Max)? Max : Value;
+    return (Value < Min)? Min : (Value > Max)? Max : Value;
 }
 
 
@@ -21,6 +21,8 @@ JoyPad::JoyPad(QWidget *parent, Qt::WindowFlags f) : QWidget(parent, f),
     m_yAnimation(new QPropertyAnimation(this, "y")),
     m_alignment(Qt::AlignTop | Qt::AlignLeft)
 {
+    setFocusPolicy(Qt::StrongFocus);
+
     m_xAnimation->setEndValue(0.f);
     m_xAnimation->setDuration(400);
     m_xAnimation->setEasingCurve(QEasingCurve::OutSine);
@@ -31,6 +33,8 @@ JoyPad::JoyPad(QWidget *parent, Qt::WindowFlags f) : QWidget(parent, f),
 
     m_returnAnimation->addAnimation(m_xAnimation);
     m_returnAnimation->addAnimation(m_yAnimation);
+
+    connect(this, &JoyPad::joyActivationChanged, this, &JoyPad::setJoyPadActive);
 }
 
 /**
@@ -64,6 +68,7 @@ void JoyPad::setX(float value)
 
     update();
     emit xChanged(m_x);
+
 }
 
 /**
@@ -79,6 +84,7 @@ void JoyPad::setY(float value)
 
     update();
     emit yChanged(m_y);
+
 }
 
 void JoyPad::removeXAnimation()
@@ -120,6 +126,17 @@ void JoyPad::setAlignment(Qt::Alignment f)
     m_alignment = f;
 }
 
+bool JoyPad::getIsJoyPadActive() const
+{
+    return isJoyPadActive;
+}
+
+void JoyPad::setJoyPadActive(bool value)
+{
+    isJoyPadActive = value;
+    qDebug()<<getIsJoyPadActive();
+}
+
 /**
  * @brief JoyPad::resizeEvent
  * @param event
@@ -130,44 +147,52 @@ void JoyPad::resizeEvent(QResizeEvent *event)
 {
     Q_UNUSED(event)
 
-    float a = qMin(width(), height());
-
+    float a = qMin(width() - width() / 4, height() - height() / 4);
     QPointF topleft;
 
-    if (m_alignment.testFlag(Qt::AlignTop))
+    // Center alignment
+    if (m_alignment.testFlag(Qt::AlignHCenter) && m_alignment.testFlag(Qt::AlignVCenter))
     {
-        topleft.setY(0);
+        topleft.setX((width() - a) / 2);
+        topleft.setY((height() - a) / 2);
     }
-    else if (m_alignment.testFlag(Qt::AlignVCenter))
+    else
     {
-        topleft.setY( ((height()-a)/2) );
-    }
-    else if(m_alignment.testFlag(Qt::AlignBottom))
-    {
-        topleft.setY( height()-a );
-    }
+        if (m_alignment.testFlag(Qt::AlignTop))
+        {
+            topleft.setY(0);
+        }
+        else if (m_alignment.testFlag(Qt::AlignVCenter))
+        {
+            topleft.setY((height() - a) / 2);
+        }
+        else if (m_alignment.testFlag(Qt::AlignBottom))
+        {
+            topleft.setY(height() - a);
+        }
 
-    if (m_alignment.testFlag(Qt::AlignLeft))
-    {
-        topleft.setX(0);
-    }
-    else if(m_alignment.testFlag(Qt::AlignHCenter))
-    {
-        topleft.setX( (width()-a)/2 );
-    }
-    else if(m_alignment.testFlag(Qt::AlignRight))
-    {
-        topleft.setX( width()-a );
+        if (m_alignment.testFlag(Qt::AlignLeft))
+        {
+            topleft.setX(0);
+        }
+        else if (m_alignment.testFlag(Qt::AlignHCenter))
+        {
+            topleft.setX((width() - a) / 2);
+        }
+        else if (m_alignment.testFlag(Qt::AlignRight))
+        {
+            topleft.setX(width() - a);
+        }
     }
 
     m_bounds = QRectF(topleft, QSize(a, a));
     qDebug() << m_bounds;
 
     m_knopBounds.setWidth(a * 0.3);
-    m_knopBounds.setHeight(a*0.3);
+    m_knopBounds.setHeight(a * 0.3);
 
-    // adjust knob position
-    qreal radius = ( m_bounds.width() - m_knopBounds.width() ) / 2;
+    // Adjust knob position
+    qreal radius = (m_bounds.width() - m_knopBounds.width()) / 2;
     m_knopBounds.moveCenter(QPointF(m_bounds.center().x() + m_x * radius, m_bounds.center().y() - m_y * radius));
 }
 
@@ -213,6 +238,13 @@ void JoyPad::paintEvent(QPaintEvent *event)
     painter.setPen(QPen(QBrush(Qt::darkGray), m_bounds.width()*0.005));
     painter.setBrush(QBrush(gradient));
     painter.drawEllipse(m_knopBounds);
+
+    if (hasFocus()) {
+        painter.setPen(QPen(QBrush(QColor(156, 200, 74)), 1));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawEllipse(m_bounds.adjusted(-5, -5, 5, 5));
+
+    }
 }
 
 /**
@@ -226,7 +258,8 @@ void JoyPad::mousePressEvent(QMouseEvent *event)
         m_returnAnimation->stop();
         m_lastPos = event->pos();
         knopPressed = true;
-    }    
+        emit joyActivationChanged(true);
+    }
 }
 
 /**
@@ -239,6 +272,7 @@ void JoyPad::mouseReleaseEvent(QMouseEvent *event)
 
     knopPressed = false;
     m_returnAnimation->start();
+    emit joyActivationChanged(false);
 }
 
 /**
@@ -250,7 +284,7 @@ void JoyPad::mouseMoveEvent(QMouseEvent *event)
     if (!knopPressed) return;
 
     // moved distance
-    QPointF dPos = event->pos() - m_lastPos; 
+    QPointF dPos = event->pos() - m_lastPos;
 
     // change the distance sligthly to guarantee overlaping knop and pointer
     dPos += 0.05 * (event->pos() - m_knopBounds.center());
@@ -283,6 +317,3 @@ void JoyPad::mouseMoveEvent(QMouseEvent *event)
         emit yChanged(m_y);
     }
 }
-
-
-
