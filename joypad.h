@@ -7,6 +7,21 @@
 class QPropertyAnimation;
 class QParallelAnimationGroup;
 
+enum JoypadButtons {
+    cmsRightJoypad=128,
+    cmsLeftJoypad=242,
+    cmsCenterJoypad=244,
+    gunTriggerStage2Joypad=33,
+    gunTriggerStage1Joypad=1,
+    handledbuttonJoypad=8,
+    tmsTopJoypad=64,
+    tmsBottomJoypad=1,
+    dmsTopJoypad=4,
+    dmsRightJoypad=8,
+    dmsBottomJoypad=16,
+    dmsLeftJoypad=32,
+};
+
 class JoyPad : public QWidget
 {
     Q_OBJECT
@@ -14,6 +29,7 @@ class JoyPad : public QWidget
     Q_PROPERTY(float y READ y WRITE setY NOTIFY yChanged)
 public:
     explicit JoyPad(QWidget *parent = Q_NULLPTR, Qt::WindowFlags f = Qt::WindowFlags());
+    ~JoyPad();
 
     float x() const;
     float y() const;
@@ -25,6 +41,7 @@ signals:
     void xChanged(float value);
     void yChanged(float value);
     void joyActivationChanged(bool active);
+    void buttonClicked(int code);
 
 protected:
     void resizeEvent(QResizeEvent *event) override;
@@ -49,6 +66,10 @@ public slots:
     */
     void setAlignment(Qt::Alignment f);
 
+    // button modes
+
+
+
 
 private:
     float m_x;
@@ -66,6 +87,9 @@ private:
     bool knopPressed;
 
     Qt::Alignment m_alignment;
+
+    int activeButtonIndex = -1;
+
 
 protected:
 

@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <math.h>
 #include <QDebug>
+#include <QTimer>
 
 template<typename T>
 T constrain(T Value, T Min, T Max)
@@ -35,6 +36,32 @@ JoyPad::JoyPad(QWidget *parent, Qt::WindowFlags f) : QWidget(parent, f),
     m_returnAnimation->addAnimation(m_yAnimation);
 
     connect(this, &JoyPad::joyActivationChanged, this, &JoyPad::setJoyPadActive);
+
+    QTimer *timer= new QTimer(this);
+    timer->setSingleShot(true);
+    connect(this, &JoyPad::buttonClicked, this, [this, timer](int value) {
+
+            activeButtonIndex = value;
+
+
+        update();
+        timer->start(100);
+    });
+
+    connect(timer, &QTimer::timeout, this, [this](){
+
+        if(activeButtonIndex>=0){
+            activeButtonIndex=-1;
+            update();
+        }
+    });
+
+
+}
+
+JoyPad::~JoyPad()
+{
+    qDebug()<<"Joypad Distructed";
 }
 
 /**
@@ -134,7 +161,6 @@ bool JoyPad::getIsJoyPadActive() const
 void JoyPad::setJoyPadActive(bool value)
 {
     isJoyPadActive = value;
-    qDebug()<<getIsJoyPadActive();
 }
 
 /**
@@ -186,7 +212,6 @@ void JoyPad::resizeEvent(QResizeEvent *event)
     }
 
     m_bounds = QRectF(topleft, QSize(a, a));
-    qDebug() << m_bounds;
 
     m_knopBounds.setWidth(a * 0.3);
     m_knopBounds.setHeight(a * 0.3);
@@ -239,11 +264,45 @@ void JoyPad::paintEvent(QPaintEvent *event)
     painter.setBrush(QBrush(gradient));
     painter.drawEllipse(m_knopBounds);
 
+
+
     if (hasFocus()) {
         painter.setPen(QPen(QBrush(QColor(156, 200, 74)), 1));
         painter.setBrush(Qt::NoBrush);
         painter.drawEllipse(m_bounds.adjusted(-5, -5, 5, 5));
 
+    }
+
+    const int numRects = 9;
+    QStringList rectTexts = {
+        "Gun Trigger",
+        "Weapons Release",
+        "Trim Switch",
+        "Tms",
+        "Dms",
+        "Master Mode",
+        "Cms",
+        "NoseWheel",
+        "Handled"
+    };
+
+
+    painter.setFont(QFont("Arial", 8));
+
+
+    for (int i = 0; i < numRects; ++i) {
+
+        if (i == activeButtonIndex) {
+            painter.setBrush(Qt::red); // Active button color
+            painter.setPen(QPen(QBrush(Qt::red), 1));
+        } else {
+            painter.setPen(QPen(QBrush(Qt::darkCyan), 1));
+            painter.setBrush(Qt::darkCyan); // Inactive button color
+        }
+
+        int yPos = i * (10 + 5);
+        painter.drawRect(QRect(m_bounds.right() + 5, yPos, 10, 10));
+        painter.drawText(QRectF(m_bounds.right() + 20, yPos - 1, 100, 20), Qt::AlignLeft, rectTexts[i]);
     }
 }
 
